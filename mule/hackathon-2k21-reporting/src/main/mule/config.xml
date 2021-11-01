@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:email="http://www.mulesoft.org/schema/mule/email"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+	<http:request-config name="HTTP_Request_configuration_platform" doc:name="HTTP Request configuration" doc:id="bc489d76-6bcf-4ba1-a790-46d4be11124f" enableCookies="false" responseTimeout="600000">
+		<http:request-connection protocol="HTTPS" host="anypoint.mulesoft.com" port="443" />
+	</http:request-config>
+	<file:config name="File_Config" doc:name="File Config" doc:id="7d8e1fb7-5efd-4655-ac41-d2c39dc43c3a" >
+		<file:connection workingDir="${mule.home}/apps/${app.name}" /> 
+	</file:config>
+	<os:object-store name="Object_store" doc:name="Object store" doc:id="67986aa6-646e-4999-a8fd-4f713e32677d" />
+	<configuration-properties doc:name="Configuration properties" doc:id="5b57788b-422a-40b7-a40e-8a17d4de81a6" file="common.properties" />
+	<http:request-config name="HTTP_Request_configuration_sfdc" doc:name="HTTP Request configuration" doc:id="18234fc2-b69b-4769-b34d-4f11abdf3467" basePath="/api" >
+		<http:request-connection host="sfdc-app.us-e2.cloudhub.io" port="80" >
+			<http:authentication >
+				<http:basic-authentication username="#[p('sfdc.api.username')]" password="#[p('sfdc.api.password')]" />
+			</http:authentication>
+		</http:request-connection>
+	</http:request-config>
+     <email:smtp-config name="Email_SMTP" doc:name="Email SMTP" doc:id="aa6fb656-d64e-4655-bb50-d22f56dc86a6" >
+         <email:smtp-connection host="smtp.gmail.com" user="#[p('email.id')]" password="#[p('email.password')]" port="587">
+             <email:properties >
+                 <email:property key="mail.smtp.starttls.enable" value="true" />
+             </email:properties>
+         </email:smtp-connection>
+     </email:smtp-config>
+	<http:request-config name="HTTP_api2pdf" doc:name="HTTP Request configuration" doc:id="228735f1-6f57-44a9-be21-c04b2508b19d" basePath="/wkhtml" >
+		<http:request-connection protocol="HTTPS" host="v2.api2pdf.com" port="443" />
+		<http:default-headers >
+			<http:default-header key="Authorization" value="#[p('api2pdf.auth.token')]" />
+		</http:default-headers>
+	</http:request-config>
+	<http:request-config name="HTTP_Request_Twilio" doc:name="HTTP Request configuration" doc:id="7e583fca-b4e2-464d-8424-ce1fb20ab0b4" basePath="/2010-04-01/Accounts/AC41d5226a35bad4f28277543e71102eb1" >
+		<http:request-connection protocol="HTTPS" host="api.twilio.com" port="443" >
+			<http:authentication >
+				<http:basic-authentication username="#[p('twilio.username')]" password="#[p('twilio.password')]" />
+			</http:authentication>
+		</http:request-connection>
+	</http:request-config>
+	<http:request-config name="HTTP_Request_google_apis" doc:name="HTTP Request configuration" doc:id="32930586-5eb1-4ef9-9c22-6263de4ea36e" >
+		<http:request-connection protocol="HTTPS" host="storage.googleapis.com" port="443" />
+	</http:request-config>
+</mule>

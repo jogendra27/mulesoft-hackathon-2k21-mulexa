@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+	<flow name="platform-apisFlow-30m" doc:id="622ed5e3-30b7-4046-add9-9fec73998141" >
+		<scheduler doc:name="Scheduler" doc:id="1148a324-f48c-476c-b741-ee0e36de4faf" >
+			<scheduling-strategy >
+				<fixed-frequency frequency="15" timeUnit="MINUTES"/>
+			</scheduling-strategy>
+		</scheduler>
+		<set-variable value='#[{&#10;&#10;	duration: attributes.queryParams.duration default "30m"&#10;&#10;}]' doc:name="Set Variable" doc:id="64224a02-98d9-4ea3-b677-061d951baf4e" variableName="transactionEssentials" />
+		<try doc:name="Try" doc:id="1b61feb2-ad59-434b-8db3-ef8571b5fd14" >
+			<file:read doc:name="Read" doc:id="759bcc80-a4f2-44b0-8e5e-5d5a933e31e9" config-ref="File_Config" path='#["analytics.csv"]' target="fileContent"/>
+			<error-handler >
+				<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="ffdf8df0-e9d6-4838-a747-34bb4d8095d2" type="FILE:ILLEGAL_PATH">
+					<logger level="INFO" doc:name="Logger" doc:id="71f531ef-ad26-45f9-be5c-17a0f3b73a5d" message="File does not exist"/>
+					<set-variable value='#[{&#10;&#10;	duration: attributes.queryParams.duration default "24h"&#10;&#10;}]' doc:name="Set Variable" doc:id="a856b346-08d7-4b03-b0dc-a081e76f6935" variableName="transactionEssentials" />
+				</on-error-continue>
+			</error-handler>
+		</try>
+		<flow-ref doc:name="call-platform-api" doc:id="3227396d-af32-4e31-ac46-454a4b609e46" name="call-platform-api"/>
+		<logger level="INFO" doc:name="Logger" doc:id="e67afc0a-3193-49cf-9e6d-0343b2faf5a2" message="Size of payload: #[sizeOf(payload)]"/>
+		<choice doc:name="Choice" doc:id="d746e20e-9469-4511-82b0-dc21133b65ac" >
+			<when expression="#[isEmpty(vars.fileContent)]">
+				<file:write doc:name="Write" doc:id="c4815df7-e559-46b5-819f-01e641e9c98c" config-ref="File_Config" path='#["analytics.csv"]'/>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="70b394fd-8b53-4539-b280-ca827ee204ea" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/csv
+---
+(vars.fileContent ++ payload) distinctBy $."Message ID"]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+					</ee:variables>
+				</ee:transform>
+				<file:write doc:name="Write" doc:id="ff69c257-9487-4482-a77c-9a40c1e63875" config-ref="File_Config" path='#["analytics.csv"]'/>
+			</otherwise>
+		</choice>
+	</flow>
+	
+	<sub-flow name="collect-data-from-sources" doc:id="533e09ea-bef8-4ee9-b8ed-9b6cff43ffe9" >
+		<try doc:name="Try" doc:id="4efac4f5-9dbf-47ed-8243-c48e02b10225">
+			<file:read doc:name="Read" doc:id="bb4ae9b7-428b-4553-a786-06ed3edf232e" config-ref="File_Config" path='#["analytics.csv"]' />
+			<ee:transform doc:name="Transform Message" doc:id="2d9854c7-fcba-43c4-8b96-97763aebc5e6">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/csv
+var duration="PT" ++ (vars.duration default "3h")
+---
+payload filter((now() - duration) < $.Timestamp) map $]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<error-handler>
+				<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="b52ce82e-c765-4592-98e1-1424256004ef" type="FILE:ILLEGAL_PATH">
+					<flow-ref doc:name="Flow Reference" doc:id="fae2884f-b8c1-4645-a58f-035e809eabb1" name="platform-apisFlow" />
+					<file:read doc:name="Read" doc:id="a087afc8-39d3-4ff5-87df-81e539eac136" config-ref="File_Config" path="#[vars.transactionEssentials.fileName]" />
+				</on-error-continue>
+			</error-handler>
+		</try>
+		<http:request method="GET" doc:name="GET SFDC Cases" doc:id="4b0d500f-00d7-4d76-8d1c-9850b3d874b1" config-ref="HTTP_Request_configuration_sfdc" path="/cases" target="sfdcCases">
+			<http:query-params><![CDATA[#[{
+	limit: vars.caseCount default 5,
+	origin: "Report"
+}]]]></http:query-params>
+		</http:request>
+	</sub-flow>
+	
+	<sub-flow name="collect-data-from-sources-and-create-html" doc:id="0e67206a-f7d8-4da4-a8ff-04b700c45049" >
+		<flow-ref doc:name="collect-data-from-sources" doc:id="d107befb-5950-45c1-9e8a-fd13395823b2" name="collect-data-from-sources" />
+		<ee:transform doc:name="Transform Message" doc:id="94aef2f7-78c8-405f-99e6-026cc8f26515">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+var totalRequests=sizeOf(payload)
+---
+{
+    totalRequets: totalRequests,
+    successPercentage: ((sizeOf(payload filter ($."Status Code" startsWith "2")))/totalRequests) as String {format: "0.00%"},
+    totalFailedCalls: sizeOf(payload filter !($."Status Code" startsWith "2")),
+    averageResponseTime: avg(payload."Response Time") as String {format: "0.000"} ++ "ms",
+    statusCodes: payload."Status Code" distinctBy $ orderBy $ joinBy ",",
+    topConsumers: keysOf(payload groupBy ($."Application Name") orderBy -sizeOf($)) filter !(isEmpty($)) joinBy ","
+}]]></ee:set-payload>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable variableName="chartURLs"><![CDATA[%dw 2.0
+output application/json
+fun occurance(status)=sizeOf(payload filter $."Status Code" == status)
+var successfulRecords=payload filter ($."Status Code" startsWith "2")
+var failedRecords=payload -- successfulRecords
+var requestOutcomes={
+    Success: sizeOf(successfulRecords),
+    Failure: sizeOf(failedRecords)
+}
+var failures={
+    failureStatus: failedRecords map $."Status Code" distinctBy $ joinBy "','",
+    numberOfFailures: failedRecords map $."Status Code" distinctBy $ map occurance($) joinBy "','"
+}
+var distinctEndpointsCalled=(payload groupBy ($."Verb" ++ ":" ++ (($."Resource Path") splitBy "?")[0]))
+var countOfRequests=distinctEndpointsCalled mapObject {
+    ($$): sizeOf($)
+}
+var requestsAndAverageTime=distinctEndpointsCalled mapObject {
+    ($$): avg($."Response Time")
+}
+---
+{
+    successFailureURL: "https://quickchart.io/chart?c={type:'pie',data:{labels:['Success,Failure'],datasets:[{data:['" ++ (valuesOf(requestOutcomes) joinBy "','") ++ "']}]}}",
+    failuresURL: "https://quickchart.io/chart?c={type:'pie',data:{labels:['" ++ failures.failureStatus ++ "'],datasets:[{data:['" ++ failures.numberOfFailures ++ "']}]}}",
+    requestsURL: "https://quickchart.io/chart?c={type:'bar',data:{labels:['"  ++ (keysOf(countOfRequests) joinBy "','") ++ "'],datasets:[{label: 'Number of requests',data:['" ++ (valuesOf(countOfRequests) joinBy "','") ++ "']}]}}",
+    requestsAndResponseTimeURL: "https://quickchart.io/chart?c={type:'bar',data:{labels:['"  ++ (keysOf(requestsAndAverageTime) joinBy "','") ++ "'],datasets:[{label: 'Response time in ms',data:['" ++ (valuesOf(requestsAndAverageTime) joinBy "','") ++ "']}]}}"
+}]]></ee:set-variable>
+<ee:set-variable variableName="sfdcCases" ><![CDATA[%dw 2.0
+output application/xml
+fun color(status)=if(status=="New") "background-color:#FBBBB9" else if(status=="Working") "background-color:#FFF380" else "background-color:#98FF98"
+var tableContent=vars.sfdcCases.records map {
+		td: a @(href:"https://selfcom-1a8-dev-ed.lightning.force.com/lightning/r/Case/" ++ $.id ++ "/view", target:"_blank"): $.id[0 to 14],
+		td: $.caseNumber,
+        td: $.priority,
+        td @(style:color($.status)): $.status,
+        td : $.reason,
+        td : $.subject,
+        td : $.description,
+        td : ($.createdDate >> "IST") as String {format: "MMM d, yyyy hh:mm:ss a"},
+        td : ($.lastModifiedDate  >> "IST") as String {format: "MMM d, yyyy hh:mm:ss a"}
+		}
+---
+if(!isEmpty(vars.sfdcCases.records)) table @(class:"center", style:"width:100%"):
+	(tr: [{
+        th: "Id",
+        th: "Case Number",
+        th: "Priority",
+        th: "Status",
+        th: "Reason",
+        th: "Subject",
+        th: "Description",
+        th: "Created Date",
+        th: "Last modified date"
+    }] ++ tableContent)
+    else
+        p: "No cases"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<parse-template doc:name="Parse Template" doc:id="ee7d5df2-cd4c-4eb3-abf2-f4813d8c2d31" location="${mule.home}/apps/${app.name}/htmlPages/notify.html" />
+	</sub-flow>
+	
+</mule>

@@ -1,0 +1,69 @@
+#%RAML 1.0 Trait
+
+responses:
+  400:
+    body:
+      application/json:
+        type: object
+        properties:
+          statusCode: 
+            description: Status code of API
+            required: true
+            example: STS-400
+          statusMessage:
+            description: Status message of API
+            required: true
+            example: Bad Request provided in input
+
+  404:
+    body:
+      application/json:
+        type: object
+        properties:
+          statusCode: 
+            description: Status code of API
+            required: true
+            example: STS-404
+          statusMessage:
+            description: Status message of API
+            required: true
+            example: API not found
+  405:
+    body:
+      application/json:
+        type: object
+        properties:
+          statusCode: 
+            description: Status code of API
+            required: true
+            example: STS-405
+          statusMessage:
+            description: Status message of API
+            required: true
+            example: Method not allowed
+  415:
+    body:
+      application/json:
+        type: object
+        properties:
+          statusCode: 
+            description: Status code of API
+            required: true
+            example: STS-415
+          statusMessage:
+            description: Status message of API
+            required: true
+            example: Unsupported meda type
+  500:
+    body:
+      application/json:
+        type: object
+        properties:
+          statusCode: 
+            description: Status code of API
+            required: true
+            example: STS-500
+          statusMessage:
+            description: Status message of API
+            required: true
+            example: Internal server error

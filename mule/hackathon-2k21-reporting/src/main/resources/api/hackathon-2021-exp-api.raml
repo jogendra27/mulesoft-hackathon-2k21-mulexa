@@ -1,0 +1,198 @@
+#%RAML 1.0
+title: hackathon-2021-exp-api
+
+traits:
+  durationParameterised:
+    queryParameters:
+      duration:
+        description: This filters the result set on the dashboard
+        type: string
+        required: false
+        #default: 3h
+        example:
+          5h
+          12h
+          15m
+  errorsResponses: !include Traits/errorResponses.raml
+
+/dashboard:
+  description: This resource will enable consumer to perform operations on the dashboard created
+  is: errorsResponses
+  displayName: Dashboard
+  get:
+    displayName: Get dashboard
+    description: This method will enable consumer to view dashboard on an interner browser
+    is: durationParameterised
+    queryParameters:
+      customDuration:
+        description: This filters the result set on the dashboard
+        type: string
+        required: false
+        default: 3h
+        example:
+          5h
+          12h
+          15m
+
+  /issues:
+    description: This child resource will enable consumer to perform operations on issues
+    displayName: Issues
+    /sfdc:
+      description: This resource will enable consumer to perform operation on salesforce cases from the dashboard
+      displayName: Salesforce
+      get:
+        displayName: Get salesforce cases
+        description: This method enable dashboard users to get salesforce cases
+        queryParameters:
+          status:
+            description: This filters salesforce cases based on their status
+            required: true
+            type: string
+            enum: ["all", "New", "Working", "Escalated", "Closed"]
+            default: all
+            example: New
+      post:
+        displayName: Create salesforce cases
+        description: This method enable dashboard users to create a  salesforce case
+        body:
+          application/x-www-form-urlencoded:
+            properties:
+              reason:
+                description: The reason for creating case
+                type: string
+                enum:
+                  - High exception rate
+                  - High response time
+                  - Suggestion
+                required: true
+                example: High response time
+              subject:
+                description: The subject for salesforce case
+                type: string
+                required: true
+                example: Response time greater than 1 second  
+              description:
+                description: This represents the description of case to be created in salesforce
+                type: string
+                required: true
+                example: It is seen that the average response time of the APIs is a liitle over 1 second. We are targeting at a value less than 1 second
+              priority:
+                description: This represents the priority of case to be created in salesforce
+                type: string
+                enum:
+                  - High
+                  - Medium
+                  - Low
+                required: true
+                example: Medium
+    /serviceNow:
+      description: This resource will enable consumer to perform operation on service now incidents from the dashboard
+      displayName: ServiceNow
+      get:
+        displayName: Get service now incident
+        description: This method enable dashboard users to get service now incidents
+        queryParameters:
+      post:
+        displayName: Create service now incidents
+        description: This method enable dashboard users to create a service now incident
+        body:
+          application/x-www-form-urlencoded:
+            properties:
+    /serviceTrace:
+      description: This resource will enable consumer to perform operation on Servicetrace tickets from the dashboard
+      displayName: Servicetrace
+      get:
+        displayName: Get Servicetrace ticket
+        description: This method enable dashboard users to get Servicetrace tickets
+        queryParameters:
+      post:
+        displayName: Create Servicetrace tickets
+        description: This method enable dashboard users to create a Servicetrace ticket
+        body:
+          application/x-www-form-urlencoded:
+            properties:
+
+
+
+
+  /report:
+    description: This resource will enable user to perform operation on report through dashboard
+    displayName: Report
+    /export:
+      description: This resource will enable the dashboard user to export the report as CSV to his/her  device
+      get:
+        description: This method will enable the dashboard user to export the report as CSV to his/her  device
+        displayName: Download report
+        is: durationParameterised
+
+  /export:
+    description: This resource will enable the dashboard user to export the dashboard as PDF
+    get:
+      description: This method will enable the dashboard user to export the dashboard as PDF to his/her  device
+      displayName: Download dashboard
+      is: durationParameterised
+      
+  /import:
+    description: This resource will enable dashboard user to import a CSV, parse it and show dashboard in HTML
+    post:
+      body:
+        multipart/form-data:
+          properties:
+            file:
+              type: file
+
+    get:
+      description: This method will enable user to update the report with latest data
+      
+  /notify:
+    description: This resourc will enable consumer to notify about the report
+    displayName: Notify
+    /email:
+      description: This resource will enable consumer to send the report through an email
+      displayName: Email
+      get:
+        description: This method enables consumer to get report in email
+        displayName: Get report in email
+    /whatsapp:
+      description: This resource will enable consumer to send the report through a whatsapp message
+      displayName: Whatsapp
+      get:
+        description: This method enables consumer to get report in whatsapp
+        displayName: Get report in whatsapp
+        
+/alexa:
+  description: This resource is created for alexa users to perform operations provided
+  displayName: Alexa
+  is: errorsResponses
+  /snapshot:
+    description: This resource enables alexa users to get a snapshot of activity in the application network
+    displayName: Snapshot
+    get:
+      description: This method will enable alexa consumers to get analysis of traffic coming to the application network
+      displayName: Get snapshot
+      is: durationParameterised
+      responses:
+        200:
+          body:
+            application/json:
+              type: !include Types/alexa-snapshot-type.raml
+                
+  /notify:
+    description: This resourc will enable consumer to notify about the report
+    displayName: Notify
+    /whatsapp:
+      description: This resource will enable consumer to send the report through a whatsapp message
+      displayName: Whatsapp
+      get:
+        description: This method enables consumer to get report in whatsapp
+        displayName: Get report in whatsapp
+        responses:
+          200:
+            body:
+              application/json:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    required: true
+                    example: Whatsapp messeage sent successfully

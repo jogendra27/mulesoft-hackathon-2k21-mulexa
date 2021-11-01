@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Work in progress</title>
+<style>
+img.sticky {
+  top: 0;
+  width:10%;
+}
+
+img {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+table, th, td {
+  text-align: center;
+  border: 1px solid black;
+  vertical-align: middle;
+  }
+
+table.center {
+  margin-left: auto; 
+  margin-right: auto;
+}
+
+body {
+  background-image: url('https://cdn.lowgif.com/full/ce2c4a388e83a154-pumpkin-pie-in-miami-thanksgiving-flight-patterns-the.gif');
+  background-repeat: no-repeat;
+  background-attachment: fixed;  
+  background-size: cover;
+}
+
+/* The sticky class is added to the header with JS when it reaches its scroll position */
+.sticky {
+  position: fixed;
+  top: 0;
+  width: 100%
+}
+
+/* Add some top padding to the page content to prevent sudden quick movement (as the header gets a new position at the top of the page (position:fixed and top:0) */
+.sticky + .content {
+  padding-top: 102px;
+}
+
+*{box-sizing: border-box;}
+
+
+/* The popup form - hidden by default */
+.form-popup {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  right: 15px;
+  border: 3px solid #f1f1f1;
+  z-index: 9;
+}
+
+/* Add styles to the form container */
+.form-container {
+  max-width: 300px;
+  padding: 10px;
+  background-color: white;
+}
+
+/* Full-width input fields */
+.form-container input[type=text], .form-container input[type=password], .form-container select{
+  width: 100%;
+  padding: 15px;
+  margin: 5px 0 22px 0;
+  border: none;
+  background: #f1f1f1;
+}
+
+
+
+/* Set a style for the submit/login button */
+.form-container .btn {
+  background-color: #04AA6D;
+  color: white;
+  padding: 16px 20px;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  margin-bottom:10px;
+  opacity: 0.8;
+}
+
+/* Add a red background color to the cancel button */
+.form-container .cancel {
+  background-color: red;
+}
+
+/* Add some hover effects to buttons */
+.form-container .btn:hover, .open-button:hover {
+  opacity: 0.5;
+}
+
+</style>
+</head>
+<body>
+<a href=#["http://" ++ p('host') ++ "/api/dashboard"]>
+<img class="sticky" src='https://blogs.mulesoft.com/wp-content/uploads/Mulesoft-Hackathon-2021.png'/>
+</a>
+
+<br/><br/><br/><br/><br/>
+<font size="7" face="Comic Sans MS" color="#00a1e1">
+<img src="https://monophy.com/media/USVf3D8MviFo3Eonfx/monophy.gif" width="300" height="300" align="center">
+</font>
+
+<font size="5" face="Comic Sans MS" align="center" color="#00a1e1">
+<p>Create a SFDC case while this is not built</p>
+<font>
+	
+<font size="3" face="Comic Sans MS" color="#00a1e1">
+
+<div class="form-popup" id="myForm">
+  <form action=#["http://" ++ p('host') ++ "/api/dashboard/issues/sfdc"] class="form-container" method="POST">
+    <img src="https://icon-library.com/images/salesforce-com-icon/salesforce-com-icon-7.jpg" width="80" height="80" align="center">
+    
+    <label for="reason"><b>Reason</b></label>
+    <select name="reason" id="reason">
+    <option value="High exception rate">High exception rate</option>
+    <option value="High response time">High response time</option>
+    <option value="Suggestion">Suggestion</option>
+  </select>
+
+    <label for="subject"><b>Subject</b></label>
+    <input type="text" placeholder="Enter Subject" name="subject" required>
+
+    <label for="description"><b>Description</b></label>
+    <input type="text" placeholder="Enter Description" name="description" required>
+    
+    <label for="priority"><b>Priority</b></label>
+  <select name="priority" id="priority">
+    <option value="High">High</option>
+    <option value="Medium">Medium</option>
+    <option value="Low">Low</option>
+  </select>
+
+    <button type="submit" class="btn">Sumbit</button>
+    <button type="button" class="btn cancel" onclick="closeForm()">Close</button>
+  </form>
+  
+  
+</div>
+
+	<img onclick="openForm()" src="https://icon-library.com/images/salesforce-com-icon/salesforce-com-icon-7.jpg" width="80" height="80" align="center">
+
+
+<script>
+function openForm() {
+  document.getElementById("myForm").style.display = "block";
+}
+
+function closeForm() {
+  document.getElementById("myForm").style.display = "none";
+}
+</script>
+
+</body>
+</html>

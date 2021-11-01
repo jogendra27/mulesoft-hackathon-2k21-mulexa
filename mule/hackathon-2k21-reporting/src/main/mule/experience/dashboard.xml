@@ -1,0 +1,386 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:gmail="http://www.mulesoft.org/schema/mule/gmail" xmlns:email="http://www.mulesoft.org/schema/mule/email"
+	xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd
+http://www.mulesoft.org/schema/mule/gmail http://www.mulesoft.org/schema/mule/gmail/current/mule-gmail.xsd">
+	
+	<flow name="dashboard-Flow" doc:id="6cdd58b7-c2fa-405f-853b-9563b0afa5d3" >
+		<set-variable value="#[if(isEmpty(attributes.queryParams.customDuration)) attributes.queryParams.duration else attributes.queryParams.customDuration]" doc:name="Set Variable" doc:id="308469c4-0909-4b82-bf7f-2fd981366cea" variableName="duration"/>
+		<flow-ref doc:name="collect-data-from-sources" doc:id="956490af-6645-4a83-a731-600de6dee4df" name="collect-data-from-sources" />
+		<ee:transform doc:name="Transform Message" doc:id="4083acbf-d6d5-413f-b296-fb2ecd292a5a" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+    totalRequets: sizeOf(payload),
+    averageResponseTime: avg(payload."Response Time") as String {format: "0.000"} ++ "ms",
+    totalSuccessCalls: sizeOf(payload filter ($."Status Code" startsWith "2")),
+    totalFailedCalls: sizeOf(payload filter !($."Status Code" startsWith "2")),
+    statusCodes: payload."Status Code" distinctBy $ orderBy $ joinBy ",",
+    dataAsOn: (attributes.lastModifiedTime >> "IST") as String {format: "MMM d, yyyy hh:mm:ss a"}
+}]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="responsePieChart" ><![CDATA[%dw 2.0
+output application/json
+---
+[
+	["Call Status", "Occurance"],
+    ["Success", sizeOf(payload filter ($."Status Code" startsWith "2"))],
+    ["Failures", sizeOf(payload filter (!($."Status Code" startsWith "2")))]
+]
+]]></ee:set-variable>
+				<ee:set-variable variableName="httpStatusPieChart" ><![CDATA[%dw 2.0
+output application/json
+fun occurance(status)=sizeOf(payload filter $."Status Code" == status)
+var desiredData={(payload filter (!($."Status Code" startsWith "2"))map $."Status Code" distinctBy $ map
+{
+    ($): occurance($)
+})}
+---
+([["HTTP Status", "Occurance"]]) ++ (keysOf(desiredData) map [$,desiredData.'$'])]]></ee:set-variable>
+				<ee:set-variable variableName="lastUpdated" ><![CDATA[%dw 2.0
+output application/json
+---
+(attributes.lastModifiedTime >> "IST") as String {format: "MMM d, yyyy HH:mm:ss"}]]></ee:set-variable>
+				<ee:set-variable variableName="endpointAndCount" ><![CDATA[%dw 2.0
+output application/json
+var detail=payload groupBy ($."Verb" ++ ":" ++ (($."Resource Path") splitBy "?")[0]) mapObject ((value, key, index) -> 
+{
+    (key as String): sizeOf(value)
+})
+---
+{
+    keys: keysOf(detail),
+    values: valuesOf(detail)
+}]]></ee:set-variable>
+			<ee:set-variable variableName="consumersAndCount" ><![CDATA[%dw 2.0
+output application/json
+var detail=payload groupBy ($."Application Name") mapObject ((value, key, index) -> 
+{
+    (if(isEmpty(key)) "Unidentified consumer" else (key as String)): sizeOf(value."Response Time")
+})
+---
+{
+    keys: keysOf(detail),
+    values: valuesOf(detail)
+}]]></ee:set-variable>
+				<ee:set-variable variableName="failureHttpStatusCount" ><![CDATA[%dw 2.0
+output application/json
+fun occurance(status)=sizeOf(payload filter $."Status Code" == status)
+var failureStatus=payload filter (!($."Status Code" startsWith "2"))map $."Status Code" distinctBy $
+---
+{
+    keys: failureStatus,
+    values: failureStatus map occurance($)
+}]]></ee:set-variable>
+				<ee:set-variable variableName="topAPIs" ><![CDATA[%dw 2.0
+output application/json
+---
+keysOf(payload groupBy ($."Verb" ++ ":" ++ (($."Resource Path") splitBy "?")[0]) orderBy -sizeOf($$))[0 to 2]
+]]></ee:set-variable>
+				<ee:set-variable variableName="topAPIsHTML" ><![CDATA[%dw 2.0
+output application/xml
+var detail=keysOf(payload groupBy ($."Verb" ++ ":" ++ (($."Resource Path") splitBy "?")[0]) orderBy -sizeOf($))[0 to 2]
+var values=payload groupBy ($."Verb" ++ ":" ++ (($."Resource Path") splitBy "?")[0]) orderBy -sizeOf($)
+var count=values mapObject
+{
+    ($$): sizeOf($)
+}
+---
+table @(class:"center", style:"width:90%"):
+	tr: [{
+        th @(rowspan:"5"): "Most used APIs"
+    }] ++ [{
+        th: "API",
+        th: "Request count"
+    }]
+    ++ (detail map 
+        {
+            td: $,
+            td: count.'$'
+        })
+        ]]></ee:set-variable>
+        		<ee:set-variable variableName="topConsumers" ><![CDATA[%dw 2.0
+output application/xml
+var detail=keysOf(payload groupBy ($."Application Name") orderBy -sizeOf($))
+var values=payload groupBy ($."Application Name") orderBy -sizeOf($)
+var count=values mapObject
+{
+    (if(isEmpty($$)) "Unidentified consumer" else $$): sizeOf($)
+}
+---
+table @(class:"center", style:"width:90%"):
+	tr: [{
+        th @(rowspan:"5"): "Top consumers"
+    }] ++ [{
+        th: "Consumer name",
+        th: "Request count"
+    }]
+    ++ ((detail) map 
+        {
+			td: if(isEmpty($)) "Unidentified consumer" else $,
+            td: if(isEmpty($)) count.'Unidentified consumer' else count.'$'
+        })]]></ee:set-variable>
+        
+        <ee:set-variable variableName="sfdcCases" ><![CDATA[%dw 2.0
+output application/xml
+fun color(status)=if(status=="New") "background-color:#FBBBB9" else if(status=="Working") "background-color:#FFF380" else "background-color:#98FF98"
+var tableContent=vars.sfdcCases.records map {
+		td: a @(href:"https://selfcom-1a8-dev-ed.lightning.force.com/lightning/r/Case/" ++ $.id ++ "/view", target:"_blank"): $.id[0 to 14],
+		td: $.caseNumber,
+        td: $.priority,
+        td @(style:color($.status)): $.status,
+        td : $.reason,
+        td : $.subject,
+        td : $.description,
+        td : ($.createdDate >> "IST") as String {format: "MMM d, yyyy hh:mm:ss a"},
+        td : ($.lastModifiedDate  >> "IST") as String {format: "MMM d, yyyy hh:mm:ss a"}
+		}
+---
+if(!isEmpty(vars.sfdcCases.records)) table @(class:"center", style:"width:100%"):
+	(tr: [{
+        th: "Id",
+        th: "Case Number",
+        th: "Priority",
+        th: "Status",
+        th: "Reason",
+        th: "Subject",
+        th: "Description",
+        th: "Created Date",
+        th: "Last modified date"
+    }] ++ tableContent)
+    else
+        p: "No cases"]]></ee:set-variable>
+				<ee:set-variable variableName="chartURLs" ><![CDATA[%dw 2.0
+output application/json
+var distinctEndpointsCalled=(payload groupBy ($."Verb" ++ ":" ++ (($."Resource Path") splitBy "?")[0]))
+var requestsAndAverageTime=distinctEndpointsCalled mapObject {
+    ($$): avg($."Response Time")
+}
+---
+{
+        
+    requestsAndResponseTimeURL: "https://quickchart.io/chart?c={type:'bar',data:{labels:['"  ++ (keysOf(requestsAndAverageTime) joinBy "','") ++ "'],datasets:[{label: 'Response time in ms',data:['" ++ (valuesOf(requestsAndAverageTime) joinBy "','") ++ "']}]}}"
+}]]></ee:set-variable>
+			
+
+</ee:variables>
+		</ee:transform>
+		<set-payload value="#[%dw 2.0&#10;output application/xml&#10;var alias={&#10;    &quot;totalRequets&quot;: &quot;Total number of requests&quot;,&#10;    &quot;averageResponseTime&quot;: &quot;Average response time in milliseconds&quot;,&#10;    &quot;totalSuccessCalls&quot;: &quot;Total successfull calls&quot;,&#10;    totalFailedCalls: &quot;Total failed calls&quot;,&#10;    &quot;statusCodes&quot;: &quot;Different status codes returned by the API&quot;,&#10;    &quot;dataAsOn&quot;: &quot;Data computed at &quot;&#10;}&#10;var keys=keysOf(payload)&#10;var values=valuesOf(payload)&#10;var tableContent=keys map {&#10;		td: alias.'$',&#10;		td: values[$$]&#10;		}&#10;---&#10;table @(class:&quot;center&quot;, style:&quot;width:80%&quot;):&#10;	(tr: [{&#10;        th: &quot;Parameter&quot;,&#10;        th: &quot;Values&quot;&#10;    }] ++ tableContent)]" doc:name="Set Payload" doc:id="9115d8e1-0303-4b1e-ad30-cf1f379c2fc0" />
+		<parse-template doc:name="Parse Template" doc:id="dcdf6eee-8124-48c0-9d8f-68d52c93d70d" location="${mule.home}/apps/${app.name}/htmlPages/dashboard.html"/>
+	</flow>
+	
+	<sub-flow name="dashboard-import-file-subFlow" doc:id="fbef2f19-7892-4862-a521-d6ef966b9fd6" >
+		<set-variable value="#[5]" doc:name="Set Variable" doc:id="c4335c8a-95a3-4991-a028-c1737a732ccf" variableName="sfdcCaseLimit"/>
+		<flow-ref doc:name="get-sfdc-cases-processSub_Flow" doc:id="fc45e820-587d-429c-86e0-5045b00635bc" name="get-sfdc-cases-processSub_Flow" target="sfdcCases"/>
+		<ee:transform doc:name="Transform Message" doc:id="e5395df6-f0a5-40af-b613-5389bf86f722" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+var orderedPayload=payload orderBy $.Timestamp
+---
+{
+    totalRequets: sizeOf(payload),
+    averageResponseTime: avg(payload."Response Time") as String {format: "0.000"} ++ "ms",
+    totalSuccessCalls: sizeOf(payload filter ($."Status Code" startsWith "2")),
+    totalFailedCalls: sizeOf(payload filter !($."Status Code" startsWith "2")),
+    statusCodes: payload."Status Code" distinctBy $ orderBy $ joinBy ",",
+    fisrTransaction: (orderedPayload[0].Timestamp  >> "IST") as String {format: "MMM d, yyyy hh:mm:ss a"},
+    lastTransaction: (orderedPayload[-1].Timestamp >> "IST") as String {format: "MMM d, yyyy hh:mm:ss a"}
+}]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="responsePieChart" ><![CDATA[%dw 2.0
+output application/json
+---
+[
+	["Call Status", "Occurance"],
+    ["Success", sizeOf(payload filter ($."Status Code" startsWith "2"))],
+    ["Failures", sizeOf(payload filter (!($."Status Code" startsWith "2")))]
+]
+]]></ee:set-variable>
+				<ee:set-variable variableName="httpStatusPieChart" ><![CDATA[%dw 2.0
+output application/json
+fun occurance(status)=sizeOf(payload filter $."Status Code" == status)
+var desiredData={(payload filter (!($."Status Code" startsWith "2"))map $."Status Code" distinctBy $ map
+{
+    ($): occurance($)
+})}
+---
+([["HTTP Status", "Occurance"]]) ++ (keysOf(desiredData) map [$,desiredData.'$'])]]></ee:set-variable>
+				<ee:set-variable variableName="lastUpdated" ><![CDATA[%dw 2.0
+output application/json
+---
+(now() >> "IST") as String {format: "MMM d, yyyy HH:mm:ss"}]]></ee:set-variable>
+				<ee:set-variable variableName="endpointAndCount" ><![CDATA[%dw 2.0
+output application/json
+var detail=payload groupBy ($."Verb" ++ ":" ++ (($."Resource Path") splitBy "?")[0]) mapObject ((value, key, index) -> 
+{
+    (key as String): sizeOf(value)
+})
+---
+{
+    keys: keysOf(detail),
+    values: valuesOf(detail)
+}]]></ee:set-variable>
+			<ee:set-variable variableName="consumersAndCount" ><![CDATA[%dw 2.0
+output application/json
+var detail=payload groupBy ($."Application Name") mapObject ((value, key, index) -> 
+{
+    (if(isEmpty(key)) "Unidentified consumer" else (key as String)): sizeOf(value."Response Time")
+})
+---
+{
+    keys: keysOf(detail),
+    values: valuesOf(detail)
+}]]></ee:set-variable>
+				<ee:set-variable variableName="failureHttpStatusCount" ><![CDATA[%dw 2.0
+output application/json
+fun occurance(status)=sizeOf(payload filter $."Status Code" == status)
+var failureStatus=payload filter (!($."Status Code" startsWith "2"))map $."Status Code" distinctBy $
+---
+{
+    keys: failureStatus,
+    values: failureStatus map occurance($)
+}]]></ee:set-variable>
+				<ee:set-variable variableName="topAPIs" ><![CDATA[%dw 2.0
+output application/json
+---
+keysOf(payload groupBy ($."Verb" ++ ":" ++ (($."Resource Path") splitBy "?")[0]) orderBy -sizeOf($$))[0 to 2]
+]]></ee:set-variable>
+				<ee:set-variable variableName="topAPIsHTML" ><![CDATA[%dw 2.0
+output application/xml
+var detail=keysOf(payload groupBy ($."Verb" ++ ":" ++ (($."Resource Path") splitBy "?")[0]) orderBy -sizeOf($))
+var values=payload groupBy ($."Verb" ++ ":" ++ (($."Resource Path") splitBy "?")[0]) orderBy -sizeOf($)
+var count=values mapObject
+{
+    ($$): sizeOf($)
+}
+---
+table @(class:"center", style:"width:90%"):
+	tr: [{
+        th @(rowspan: (sizeOf(count) + 2)): "Most used APIs"
+    }] ++ [{
+        th: "API",
+        th: "Request count"
+    }]
+    ++ (detail map 
+        {
+            td: $,
+            td: count.'$'
+        })
+        ]]></ee:set-variable>
+        		<ee:set-variable variableName="topConsumers" ><![CDATA[%dw 2.0
+output application/xml
+var detail=keysOf(payload groupBy ($."Application Name") orderBy -sizeOf($))
+var values=payload groupBy ($."Application Name") orderBy -sizeOf($)
+var count=values mapObject
+{
+    (if(isEmpty($$)) "Unidentified consumer" else $$): sizeOf($)
+}
+---
+table @(class:"center", style:"width:90%"):
+	tr: [{
+        th @(rowspan: (sizeOf(count) + 2)): "Top consumers"
+    }] ++ [{
+        th: "Consumer name",
+        th: "Request count"
+    }]
+    ++ ((detail) map 
+        {
+			td: if(isEmpty($)) "Unidentified consumer" else $,
+            td: if(isEmpty($)) count.'Unidentified consumer' else count.'$'
+        })]]></ee:set-variable>
+				<ee:set-variable variableName="duration" ><![CDATA[%dw 2.0
+output application/java
+var orderedPayload=payload orderBy $.Timestamp
+var differenceInTime=orderedPayload.Timestamp[-1] - orderedPayload.Timestamp[0]
+---
+differenceInTime.hours ++ " hours " ++  differenceInTime.minutes ++ " minutes"]]></ee:set-variable>
+				<ee:set-variable variableName="chartURLs" ><![CDATA[%dw 2.0
+output application/json
+var distinctEndpointsCalled=(payload groupBy ($."Verb" ++ ":" ++ (($."Resource Path") splitBy "?")[0]))
+var requestsAndAverageTime=distinctEndpointsCalled mapObject {
+    ($$): avg($."Response Time")
+}
+---
+{
+        
+    requestsAndResponseTimeURL: "https://quickchart.io/chart?c={type:'bar',data:{labels:['"  ++ (keysOf(requestsAndAverageTime) joinBy "','") ++ "'],datasets:[{label: 'Response time in ms',data:['" ++ (valuesOf(requestsAndAverageTime) joinBy "','") ++ "']}]}}"
+}]]></ee:set-variable>
+			
+
+</ee:variables>
+		</ee:transform>
+		<set-payload value="#[%dw 2.0&#10;output application/xml&#10;var alias={&#10;    &quot;totalRequets&quot;: &quot;Total number of requests&quot;,&#10;    &quot;averageResponseTime&quot;: &quot;Average response time in milliseconds&quot;,&#10;    &quot;totalSuccessCalls&quot;: &quot;Total successfull calls&quot;,&#10;    totalFailedCalls: &quot;Total failed calls&quot;,&#10;    &quot;statusCodes&quot;: &quot;Different status codes returned by the API&quot;,&#10;    &quot;dataAsOn&quot;: &quot;Data computed at &quot;,&#10;    &quot;fisrTransaction&quot;: &quot;Timestamp of first transaction&quot;,&#10;    &quot;lastTransaction&quot;: &quot;Timestamp of last transaction&quot;&#10;}&#10;var keys=keysOf(payload)&#10;var values=valuesOf(payload)&#10;var tableContent=keys map {&#10;		td: alias.'$',&#10;		td: values[$$]&#10;		}&#10;---&#10;table @(class:&quot;center&quot;, style:&quot;width:80%&quot;):&#10;	(tr: [{&#10;        th: &quot;Parameter&quot;,&#10;        th: &quot;Values&quot;&#10;    }] ++ tableContent)]" doc:name="Set Payload" doc:id="be1230cb-dc07-42a0-a4ef-24cd4e92e631" />
+		<parse-template doc:name="Parse Template" doc:id="58e5ef03-8290-4133-961f-1673fdaedf74" location="${mule.home}/apps/${app.name}/htmlPages/dashboard-importedReport.html"/>
+	</sub-flow>
+	<flow name="create-cases-flow" doc:id="7e6d829d-0999-4234-9797-26505fce982b" >
+		<ee:transform doc:name="Transform Message" doc:id="74a0c6f8-4176-488d-badf-f505af82b907" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload ++ {
+	"origin": "Report"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<http:request method="POST" doc:name="Request" doc:id="099acf8d-7d59-4ae8-ac24-5b9a73e54c80" config-ref="HTTP_Request_configuration_sfdc" path="/cases"/>
+		<parse-template doc:name="Parse Template" doc:id="a9698f2d-66a1-4d8a-8390-02733cc28667" location="${mule.home}/apps/${app.name}/htmlPages/afterCaseCreation.html"/>
+	
+</flow>
+	
+	
+	<flow name="download-report-Flow" doc:id="c54f6563-5a7f-43db-abcf-f0bd2906c0d2" >
+		<set-variable value="#[attributes.queryParams.duration]" doc:name="Set Variable" doc:id="97cf3600-4f81-413d-9f19-eaf088e2874e" variableName="duration"/>
+		<file:read doc:name="Read" doc:id="045d4c8a-5742-46d8-aa1d-2ee45654b7f2" config-ref="File_Config" path='#["analytics.csv"]'/>
+		<ee:transform doc:name="Transform Message" doc:id="9528883c-956a-4ccd-b579-484116b13224" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/csv
+var duration="PT" ++ (vars.duration default "3h")
+---
+if(isEmpty(vars.duration)) payload
+	else
+		(payload filter((now() - duration) < $.Timestamp) map $)]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="outboundHeaders" ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	"Content-Disposition": "attachment; filename=analytics.csv"
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+	</flow>
+	<sub-flow name="dashboard-export-as-pdf-subFlow" doc:id="f155a8ba-2120-46e4-8840-d54785e0883a">
+		<set-variable value="#[attributes.queryParams.duration]" doc:name="Set Variable" doc:id="fa3112b0-742d-470d-8e96-69e53e40c8bf" variableName="duration"/>
+		<flow-ref doc:name="covert-html-2-pdf-subFlow" doc:id="9ef79a47-fa74-4389-90d8-78be0387d769" name="covert-html-2-pdf-subFlow"/>
+		<logger level="INFO" doc:name="Logger" doc:id="ef49412c-2009-4943-85e6-9ffe11cc5df7" message="uRL IS #[payload.FileUrl]" />
+		<http:request method="GET" doc:name="Request" doc:id="e82505c6-9675-4c02-93e8-7cda4d90a7f0" config-ref="HTTP_Request_google_apis" path='#[(payload.FileUrl splitBy ".com")[1]]'/>
+		<ee:transform doc:name="Transform Message" doc:id="c7604795-1e6d-4ab3-9e02-7a4f0201b954">
+			<ee:message>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable variableName="outboundHeaders"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	"Content-Disposition": "attachment; filename=analytics.pdf"
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+	</sub-flow>
+	
+	
+</mule>

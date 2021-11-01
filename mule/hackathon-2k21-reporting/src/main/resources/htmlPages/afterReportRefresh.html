@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
+<head>
+<meta http-equiv="refresh" content=#["3;url=" ++ "http://" ++ p('host') ++ "/api/dashboard?duration=" ++ (vars.duration default "3h")]>
+<title>Notification sent</title>
+<style>
+img.sticky {
+  top: 0;
+  width:10%;
+}
+
+img {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+table, th, td {
+  text-align: center;
+  border: 1px solid black;
+  vertical-align: middle;
+  }
+
+table.center {
+  margin-left: auto; 
+  margin-right: auto;
+}
+
+body {
+  background-image: url('https://cdn.lowgif.com/full/ce2c4a388e83a154-pumpkin-pie-in-miami-thanksgiving-flight-patterns-the.gif');
+  background-repeat: no-repeat;
+  background-attachment: fixed;  
+  background-size: cover;
+}
+
+/* The sticky class is added to the header with JS when it reaches its scroll position */
+.sticky {
+  position: fixed;
+  top: 0;
+  width: 100%
+}
+
+/* Add some top padding to the page content to prevent sudden quick movement (as the header gets a new position at the top of the page (position:fixed and top:0) */
+.sticky + .content {
+  padding-top: 102px;
+}
+
+</style>
+</head>
+<body>
+<img class="sticky" src='https://blogs.mulesoft.com/wp-content/uploads/Mulesoft-Hackathon-2021.png'/>
+
+<img class="sticky" src='https://blogs.mulesoft.com/wp-content/uploads/Mulesoft-Hackathon-2021.png'/>
+<br/><br/><br/><br/><br/>
+<font size="7" face="Comic Sans MS" color="#00a1e1">
+<h4 id="myHeader" style="text-align:center">Report refreshed</h4>
+<h5 style="text-align:center">You will soon be redirected</h5>
+
+</font>
+
+</body>
+</html>

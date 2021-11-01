@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd 
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+	
+	<sub-flow name="call-platform-api" doc:id="76b371eb-37f8-4025-8cc7-8d175fcca44e" >
+		<flow-ref doc:name="Flow Reference" doc:id="2181e3d3-8b50-4667-a8ca-f1017c729a1c" name="platform-apisSub_Flow-check-auth" />
+		<try doc:name="Try" doc:id="86f8647b-6068-48ff-9ca1-4e0ca8a95d9e">
+			<http:request method="GET" doc:name="Request" doc:id="7f8f9b3c-8b30-4bee-8ccf-d82704268a6b" config-ref="HTTP_Request_configuration_platform" path="/analytics/1.0/{orgId}/environments/{envId}/events?format=csv&amp;fields=Application.Application%20Name.Message%20ID.Request%20Outcome.Resource%20Path.Response%20Time.Status%20Code.Verb">
+			<http:headers><![CDATA[#[output application/java
+---
+{
+	"Authorization" : "Bearer " ++ vars.platformAuth
+}]]]></http:headers>
+				<http:uri-params ><![CDATA[#[output application/java
+---
+{
+	"orgId" : p('anypoint.platform.org.id'),
+	"envId": p('anypoint.platform.env.id')
+}]]]></http:uri-params>
+				<http:query-params><![CDATA[#[{
+	duration: vars.transactionEssentials.duration default "12h"
+}]]]></http:query-params>
+		</http:request>
+			<error-handler>
+				<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="515737b4-4644-4e8a-bbec-5efaa2d06c3f" type="HTTP:UNAUTHORIZED">
+					<logger level="INFO" doc:name="Logger" doc:id="fec36d3f-f3eb-4746-aaa7-c4e134dce6ee" message="Token expired" />
+					<os:remove doc:name="Remove" doc:id="553861b7-2fa4-43ef-b0ac-a9a9ca3f9d32" objectStore="Object_store" key="auth" />
+					<flow-ref doc:name="Flow Reference" doc:id="02750a99-9689-4b2c-a6b5-1a6920dfd6ba" name="platform-apisFlow" />
+				</on-error-continue>
+			</error-handler>
+		</try>
+	</sub-flow>
+	
+	<flow name="platform-apisFlow" doc:id="2ea03932-c7c2-4471-b6c4-b755fa083e73" >
+		<ee:transform doc:name="Transform Message" doc:id="64a9f143-d906-4c70-ac3f-50019b67c7ac" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="transactionEssentials" ><![CDATA[%dw 2.0
+output application/java
+var duration=if(isEmpty(vars.duration)) (attributes.queryParams.duration as String) else vars.duration
+---
+{
+	duration: duration,
+	fileName: "analytics.csv" 
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="Flow Reference" doc:id="3e06a956-290b-48cc-88cf-e91af9439573" name="call-platform-api" />
+		<file:write doc:name="Write" doc:id="46ef42d3-1441-4ba9-9cf3-1521908e3712" config-ref="File_Config" path="#[vars.transactionEssentials.fileName]"/>
+	</flow>
+	<sub-flow name="platform-apisSub_Flow-check-auth" doc:id="97a486d0-029f-441f-badd-659d3c8d48f7" >
+		<os:contains doc:name="Contains" doc:id="87935c4d-5e22-4cc9-b965-8408ba2c0778" key="auth" objectStore="Object_store"/>
+		<choice doc:name="Choice" doc:id="a47823fd-94eb-4032-a172-66a7e80789a3" >
+			<when expression="#[payload]">
+				<os:retrieve doc:name="Retrieve" doc:id="1ddf363b-2f80-4bc3-a9dd-f22b81083ee4" key="auth" objectStore="Object_store" target="platformAuth"/>
+			</when>
+			<otherwise >
+				<flow-ref doc:name="Flow Reference" doc:id="d6015813-32e1-4c40-a99f-fe924bd5440f" name="platform-apisFlow-login"/>
+			</otherwise>
+		</choice>
+	</sub-flow>
+	<flow name="platform-apisFlow-login" doc:id="7eb0e0e3-2a42-42c8-8366-1743260cb261" >
+		<logger level="INFO" doc:name="Logger" doc:id="085d32b4-d71c-457f-89f2-0fe581226321" message="Requesting platform for credentials"/>
+		<http:request method="POST" doc:name="Request" doc:id="e391c848-2a67-45e9-a1d9-49a960315ed4" config-ref="HTTP_Request_configuration_platform" path="/accounts/login" >
+			<http:body ><![CDATA[#[%dw 2.0
+output application/json
+---
+{
+    "username": p('anypoint.platform.username'),
+    "password": p('anypoint.platform.password')
+}]]]></http:body>
+		</http:request>
+		<set-variable value="#[payload.access_token]" doc:name="Set Variable" doc:id="9d6fe6ce-8985-4846-87b3-d1b41bc5052d" variableName="platformAuth"/>
+		<os:store doc:name="Store" doc:id="f534e2e1-fb12-4ae8-9637-8dd720275162" key="auth" objectStore="Object_store">
+			<os:value ><![CDATA[#[payload.access_token]]]></os:value>
+		</os:store>
+	</flow>
+	
+</mule>

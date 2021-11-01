@@ -1,0 +1,49 @@
+#%RAML 1.0 DataType
+
+properties:
+  totalRequets:
+    description: This field denotes number of requests received by mule in the specified time
+    type: integer
+    required: true
+    example: 792
+  successPercentage:
+    description: This field denotes % of calls that succeeded
+    type: string
+    required: true
+    example: 100.00%
+  totalFailedCalls:
+    description: This field denotes number of requests that resulted in failure
+    type: integer
+    required: true
+    example: 0
+  averageResponseTime:
+    description: This field denotes average response time of mule APIs in ms
+    type: string
+    required: true
+    example: 1102.572ms
+  statusCodes:
+    description: Comma separated status codes returned by mule APIs
+    type: string
+    required: true
+    example: "200,201"
+  topConsumers:
+    description: This field denotes number of requests received by mule in the specified time
+    type: integer
+    required: true
+    example: 792
+  newCases:
+    description: This field denotes total number of open cases in SFDC
+    type: integer
+    required: true
+    example: 5
+  closedCases:
+    description: This field denotes total number of closed cases in SFDC
+    type: integer
+    required: true
+    example: 3
+  wipCases:
+    description: This field denotes total number cases in SFDC with status Working
+    type: integer
+    required: true
+    example: 2
+    

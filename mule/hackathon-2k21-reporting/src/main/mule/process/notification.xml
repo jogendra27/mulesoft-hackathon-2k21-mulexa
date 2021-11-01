@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:email="http://www.mulesoft.org/schema/mule/email"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<flow name="send-email-flow" doc:id="ec5ff844-a20e-4e56-9718-1385c274d586" >
+		<flow-ref doc:name="collect-data-from-sources-and-create-html" doc:id="555de7b4-618a-4cba-94a7-59694d105507" name="collect-data-from-sources-and-create-html"/>
+		<flow-ref doc:name="covert-html-2-pdf-subFlow" doc:id="c29bf4c9-fcde-4b86-aeeb-5f9d1f0a1a33" name="covert-html-2-pdf-subFlow"/>
+		<http:request method="GET" doc:name="Request" doc:id="9130d374-bca0-4e68-a042-1364e320046a" config-ref="HTTP_Request_google_apis" path='#[(payload.FileUrl splitBy ".com")[1]]'/>
+		<email:send doc:name="Send" doc:id="0cefd3b6-0178-45bb-af93-73ac2e7ce7b7" config-ref="Email_SMTP" subject='#["Mulexa"]'>
+			<email:to-addresses >
+				<email:to-address value="#[p('email.to.address')]" />
+			</email:to-addresses>
+			<email:body>
+				<email:content ><![CDATA[#["Please find attached PDF report"]]]></email:content>
+			</email:body>
+			<email:attachments ><![CDATA[#[{
+	'Report': payload
+}]]]></email:attachments>
+		
+</email:send>
+	</flow>
+	<sub-flow name="covert-html-2-pdf-subFlow" doc:id="01349ca5-6124-4910-8c25-30faf9bfed59" >
+		<flow-ref doc:name="Flow Reference" doc:id="e0901f5b-6f91-454b-be66-087f24669e45" name="collect-data-from-sources-and-create-html" />
+		<ee:transform doc:name="Transform Message" doc:id="ebae8caf-efdd-436d-9ca4-9b28e21f9a5f" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  "html": payload,
+  "inline": true,
+  "fileName": "Report.pdf",
+  "options": {
+    "orientation": "Portrait",
+    "pageSize": "A3"
+  },
+  "enableToc": false,
+  "tocOptions": {
+    "tocHeaderText": "Lorem Ipsum",
+    "tocLevelIndentation": "1em"
+  },
+  "useCustomStorage": false,
+  "storage": {
+    "method": "PUT",
+    "url": "https://presignedurl",
+    "extraHTTPHeaders": {}
+  }
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<http:request method="POST" doc:name="Request" doc:id="594cd584-1d0d-4123-a383-c3a4fd7388b9" config-ref="HTTP_api2pdf" path="/pdf/html"/>
+	</sub-flow>
+	<sub-flow name="sent-whatsapp-message-flow" doc:id="13585d84-a868-4587-acd9-0828608feaba" >
+		<set-variable value="#[attributes.queryParams.duration]" doc:name="Set Variable" doc:id="1c27d088-86de-420e-a763-10c8a70a9649" variableName="duration"/>
+		<flow-ref doc:name="covert-html-2-pdf-subFlow" doc:id="4549875a-7844-4389-b322-dc09ac9fd8a1" name="covert-html-2-pdf-subFlow"/>
+		<logger level="INFO" doc:name="Logger" doc:id="ec3f055a-8fca-4b62-a27c-26e431741fec" message="uRL IS #[payload.FileUrl]" />
+		<ee:transform doc:name="Transform Message" doc:id="9251ae4f-c32b-4f8e-897c-b7281efff408">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/x-www-form-urlencoded
+---
+{
+	To: p('twilio.whatsapp.to'),
+	From: p('twilio.whatsapp.from'),
+	MediaUrl: payload.FileUrl,
+	Body: "Report"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<http:request method="POST" doc:name="Request" doc:id="b0be429c-74dc-4d35-bbfe-9a5520929c7d" config-ref="HTTP_Request_Twilio" path="/Messages.json" />
+	</sub-flow>
+</mule>

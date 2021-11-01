@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard</title>
+<style>
+
+
+img.sticky {
+  top: 0;
+  width:10%;
+}
+
+img {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+table, th, td {
+  text-align: center;
+  border: 1px solid black;
+  vertical-align: middle;
+  }
+
+table.center {
+  margin-left: auto; 
+  margin-right: auto;
+}
+
+body {
+  background-image: url('https://cdn.lowgif.com/full/ce2c4a388e83a154-pumpkin-pie-in-miami-thanksgiving-flight-patterns-the.gif');
+  background-repeat: no-repeat;
+  background-attachment: fixed;  
+  background-size: cover;
+  opacity: 200%;
+}
+
+/* The sticky class is added to the header with JS when it reaches its scroll position */
+.sticky {
+  position: fixed;
+  top: 0;
+  width: 100%
+}
+
+/* Add some top padding to the page content to prevent sudden quick movement (as the header gets a new position at the top of the page (position:fixed and top:0) */
+.sticky + .content {
+  padding-top: 102px;
+}
+
+*{box-sizing: border-box;}
+
+
+/* The popup form - hidden by default */
+.form-popup {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  right: 15px;
+  border: 3px solid #f1f1f1;
+  z-index: 9;
+}
+
+/* Add styles to the form container */
+.form-container {
+  max-width: 300px;
+  padding: 10px;
+  background-color: white;
+}
+
+/* Full-width input fields */
+.form-container input[type=text], .form-container input[type=password], .form-container select{
+  width: 100%;
+  padding: 15px;
+  margin: 5px 0 22px 0;
+  border: none;
+  background: #f1f1f1;
+}
+
+
+
+/* Set a style for the submit/login button */
+.form-container .btn {
+  background-color: #04AA6D;
+  color: white;
+  padding: 16px 20px;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  margin-bottom:10px;
+  opacity: 0.8;
+}
+
+/* Add a red background color to the cancel button */
+.form-container .cancel {
+  background-color: red;
+}
+
+/* Add some hover effects to buttons */
+.form-container .btn:hover, .open-button:hover {
+  opacity: 0.5;
+}
+
+</style>
+</head>
+<body>
+<a href=#["http://" ++ p('host') ++ "/api/dashboard"]>
+<img class="sticky" src='https://blogs.mulesoft.com/wp-content/uploads/Mulesoft-Hackathon-2021.png'/>
+</a>
+<font size="7" face="Comic Sans MS" color="#00a1e1">
+<h4 id="myHeader" style="text-align:center">Analysis of traffic in the application network</h4>
+</font>
+<font size="5" face="Comic Sans MS" align="center" color="#00a1e1">
+	<p>You're seeing data for #[vars.duration] from the CSV you uploaded. Timestamp of first and last transaction from report is in the table</p>
+<h3>Here's a quick snapshot</h3>
+
+#[payload]
+
+<br/>
+
+</font>
+
+
+<br/><br/><br/>
+
+<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+
+<script type="text/javascript">
+// Load google charts
+google.charts.load('current', {'packages':['corechart']});
+google.charts.setOnLoadCallback(drawChart);
+
+// Draw the chart and set the chart values
+function drawChart() {
+  var data = google.visualization.arrayToDataTable(#[vars.responsePieChart]);
+
+  // Optional; add a title and set the width and height of the chart
+  var options = {'title':'Response', 'width':550, 'height':400, pieSliceText: 'value-and-percentage', is3D: true,slices: {1: {offset: 0.3}}};
+
+  // Display the chart inside the <div> element with id="piechartFinalResponse"
+  var chart = new google.visualization.PieChart(document.getElementById('piechartFinalResponse'));
+  chart.draw(data, options);
+}
+</script>
+
+<script type="text/javascript">
+// Load google charts
+google.charts.load('current', {'packages':['corechart']});
+google.charts.setOnLoadCallback(drawChart);
+
+// Draw the chart and set the chart values
+function drawChart() {
+  var data = google.visualization.arrayToDataTable(#[vars.httpStatusPieChart]);
+
+  // Optional; add a title and set the width and height of the chart
+  var options = {
+  					'title':'Failure HTTP Status', 
+  					'width':550, 
+  					'height':400,
+  					pieSliceText: 'value-and-percentage',
+  					is3D: true,
+          			slices: {  
+          				0: {offset: 0.1},
+          				1: {offset: 0.1},
+                    	2: {offset: 0.1},
+                    	3: {offset: 0.1},
+                    	4: {offset: 0.1},
+                    	5: {offset: 0.1},
+                    	6: {offset: 0.1},
+                    },
+  				};
+
+  // Display the chart inside the <div> element with id="piechartFinalResponse"
+  var chart = new google.visualization.PieChart(document.getElementById('piechartHttpResponse'));
+  chart.draw(data, options);
+}
+</script>
+	<font size="5" face="Comic Sans MS" align="center" color="#00a1e1">
+	<table style="width:50%" class="center">
+		<tr>
+			<th>Success and Failures</th>
+			<th>Failure HTTP Status</th>
+		</tr>
+		<tr>
+			<td align="center"><div id="piechartFinalResponse" style="border: 1px solid #ccc"></div></td>
+			<!--<td align="center"><div id="piechartHttpResponse" style="border: 1px solid #ccc"></div></td>-->
+			<td align="center"><canvas id="pieCahrtFailureHttpStatus" style="width:100%;max-width:600px" align="center"></canvas></td>
+		</tr>
+	</table>
+	<br/>
+	<font size="5" face="Comic Sans MS" color="#00a1e1">
+        #[vars.topConsumers]
+        <br/><br/>
+        #[vars.topAPIsHTML]
+<br/>
+<table style="width:100%" class="center">
+		<tr>
+			<th>Endpoints and their average response times</th>
+		</tr>
+		<tr>
+			<td align="center">
+				<img src=#[vars.chartURLs.requestsAndResponseTimeURL] width="1000" height="600" align="center"/>
+			</td>
+		</tr>
+	</table>
+<br/>
+</font>
+	<table style="width:100%" class="center">
+		<tr>
+			<th>Consumers and their request count</th>
+			<th>Endpoints and number of requests received</th>
+		</tr>
+		<tr>
+			<td align="center"><canvas id="barGraphConsumerAndRequestCount" style="width:100%;max-width:600px" align="center"></canvas></td>
+			<td align="center"><canvas id="pieCahrtEndpointAndNumberOfRequests" style="width:100%;max-width:600px" align="center"></canvas></td>
+		</tr>
+	</table>
+	</font>
+
+
+<script>
+var xValues = #[vars.failureHttpStatusCount.keys];
+var yValues = #[vars.failureHttpStatusCount.values];
+var barColors = [
+  "#b91d47",
+  "#00aba9",
+  "#2b5797",
+  "#e8c3b9",
+  "#1e7145"
+];
+
+new Chart("pieCahrtFailureHttpStatus", {
+  type: "pie",
+  data: {
+    labels: xValues,
+    datasets: [{
+      backgroundColor: barColors,
+      data: yValues
+    }]
+  },
+  options: {
+
+  }
+});
+</script>
+
+<script>
+var xValues = #[vars.consumersAndCount.keys];
+var yValues = #[vars.consumersAndCount.values];
+var barColors = ["#b91d47","#00aba9","#2b5797","#e8c3b9","#1e7145","#000080","#00008B","#0000CD","#0000FF","#006400","#008000","#008080","#008B8B","#00BFFF","#00DED1","#00FA9A","#00FF00","#00FF7F","#00FFFF","#00FFFF","#191970","#1E90FF","#20B2AA","#228B22","#2E8B57","#2F4F4F"];
+
+new Chart("barGraphConsumerAndRequestCount", {
+  type: "bar",
+  data: {
+    labels: xValues,
+    datasets: [{
+      backgroundColor: barColors,
+      data: yValues
+    }]
+  },
+  options: {
+    legend: {display: false},
+  }
+});
+</script>
+
+<script>
+var xValues = #[vars.endpointAndCount.keys];
+var yValues = #[vars.endpointAndCount.values];
+var barColors = ["#b91d47","#00aba9","#2b5797","#e8c3b9","#1e7145","#000080","#00008B","#0000CD","#0000FF","#006400","#008000","#008080","#008B8B","#00BFFF","#00DED1","#00FA9A","#00FF00","#00FF7F","#00FFFF","#00FFFF","#191970","#1E90FF","#20B2AA","#228B22","#2E8B57","#2F4F4F"];
+
+new Chart("pieCahrtEndpointAndNumberOfRequests", {
+  type: "bar",
+  data: {
+    labels: xValues,
+    datasets: [{
+      backgroundColor: barColors,
+      data: yValues
+    }]
+  },
+  options: {
+    legend: {display: false},
+  }
+});
+</script>
+<font size="5" face="Comic Sans MS" align="center" color="#00a1e1">
+<p>Have a concern? Raise a ticket</p>
+<font>
+	
+<font size="3" face="Comic Sans MS" color="#00a1e1">
+<font size="3" face="Comic Sans MS" color="#00a1e1">
+<div id="header" style="height:15%; width:100%;">
+    <div style='float:left;width:50%;'>
+	<img onclick="openForm()" src="https://icon-library.com/images/salesforce-com-icon/salesforce-com-icon-7.jpg" width="80" height="80" align="center">
+    </div>
+    <div style='float:right;width:50%;'>
+        <a href=#["http://" ++ p('host') ++ "/api/dashboard/issues/serviceNow"]>
+        	<img src="https://iconape.com/wp-content/files/fg/99510/png/servicenow-1.png" width="100" height="100" align="center">
+        </a>
+    </div>
+</div>
+
+<div class="form-popup" id="myForm">
+  <form action=#["http://" ++ p('host') ++ "/api/dashboard/issues/sfdc"] class="form-container" method="POST">
+    <img src="https://icon-library.com/images/salesforce-com-icon/salesforce-com-icon-7.jpg" width="80" height="80" align="center">
+    
+    <label for="reason"><b>Reason</b></label>
+    <select name="reason" id="reason">
+    <option value="High exception rate">High exception rate</option>
+    <option value="High response time">High response time</option>
+  </select>
+
+    <label for="subject"><b>Subject</b></label>
+    <input type="text" placeholder="Enter Subject" name="subject" required>
+
+    <label for="description"><b>Description</b></label>
+    <input type="text" placeholder="Enter Description" name="description" required>
+    
+    <label for="priority"><b>Priority</b></label>
+  <select name="priority" id="priority">
+    <option value="High">High</option>
+    <option value="Medium">Medium</option>
+    <option value="Low">Low</option>
+  </select>
+
+    <button type="submit" class="btn">Sumbit</button>
+    <button type="button" class="btn cancel" onclick="closeForm()">Close</button>
+  </form>
+  
+  
+</div>
+</font>
+
+<br/><br/><br/>
+
+<font size="5" face="Comic Sans MS" color="#00a1e1">
+
+<p>Recent tickets:</p>
+
+</font>
+
+<font size="3" face="Comic Sans MS" color="#00a1e1">
+  
+  #[vars.sfdcCases]
+  
+</font>
+
+<p><a href=#["http://" ++ p('host') ++ "/api/dashboard/issues/sfdc?status=all"]>More SFDC Cases</a></p>
+
+<script>
+function openForm() {
+  document.getElementById("myForm").style.display = "block";
+}
+
+function closeForm() {
+  document.getElementById("myForm").style.display = "none";
+}
+</script>
+
+<font size="5" face="Comic Sans MS" align="center" color="#00a1e1">
+	<h4 style="text-align:center">If you want to see dashboard for your CSV, upload it and hit GO</h4>
+</font>
+  <form action=#["http://" ++ p('host') ++ "/api/dashboard/import"] method="post" enctype="multipart/form-data">
+  	<input type="file" id="myFile" name="filename">
+    <br/>
+  	<input type="image" src="https://cdn.pixabay.com/photo/2020/07/24/08/24/go-5433252_960_720.png" alt="Submit" width="60" height="60">
+</form>
+
+<h4 style="text-align:center">Hit the logo below to print this page</h4>
+<img onClick="window.print()" src="https://www.pngkey.com/png/full/207-2073229_image-print-icon.png" width="60" height="60" align="center">
+  
+</font>
+
+
+</body>
+</html>

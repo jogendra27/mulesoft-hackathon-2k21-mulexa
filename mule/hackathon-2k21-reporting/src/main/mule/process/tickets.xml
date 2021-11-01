@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<sub-flow name="get-sfdc-cases-processSub_Flow" doc:id="05d849a5-db40-41aa-818b-f6d041ccd334" >
+		<http:request method="GET" doc:name="GET SFDC Cases" doc:id="d7e7c59d-cedc-4252-b7c8-394f7461ea3b" config-ref="HTTP_Request_configuration_sfdc" path="/cases" target="sfdcCases">
+			<http:query-params ><![CDATA[#[output application/java
+---
+{
+	limit : if(isEmpty(vars.sfdcCaseLimit)) 100 else 5,
+	(status: attributes.queryParams.status) if(!isEmpty(attributes.queryParams.status) and attributes.queryParams.status != "all")
+}]]]></http:query-params>
+		</http:request>
+		<ee:transform doc:name="Transform Message" doc:id="c3f1ba0a-85f9-491b-8c36-04571f35b893" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/xml
+fun color(status)=if(status=="New") "background-color:#FBBBB9" else if(status=="Working") "background-color:#FFF380" else "background-color:#98FF98"
+var tableContent=vars.sfdcCases.records map {
+		td: a @(href:"https://selfcom-1a8-dev-ed.lightning.force.com/lightning/r/Case/" ++ $.id ++ "/view", target:"_blank"): $.id[0 to 14],
+		td: $.caseNumber,
+        td: $.priority,
+        td @(style:color($.status)): $.status,
+        td : $.reason,
+        td : $.subject,
+        td : $.description,
+        td : ($.createdDate >> "IST") as String {format: "MMM d, yyyy hh:mm:ss a"},
+        td : ($.lastModifiedDate  >> "IST") as String {format: "MMM d, yyyy hh:mm:ss a"}
+		}
+---
+if(!isEmpty(vars.sfdcCases.records)) table @(class:"center", style:"width:100%"):
+	(tr: [{
+        th: "Id",
+        th: "Case Number",
+        th: "Priority",
+        th: "Status",
+        th: "Reason",
+        th: "Subject",
+        th: "Description",
+        th: "Created Date",
+        th: "Last modified date"
+    }] ++ tableContent)
+    else
+        p: "No cases"]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+</mule>

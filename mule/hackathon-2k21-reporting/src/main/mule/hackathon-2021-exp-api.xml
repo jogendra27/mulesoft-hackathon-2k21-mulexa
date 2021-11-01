@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd  http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+    <http:listener-config name="hackathon-2021-exp-api-httpListenerConfig">
+        <http:listener-connection host="0.0.0.0" port="8081" />
+    </http:listener-config>
+    <apikit:config name="hackathon-2021-exp-api-config" api="hackathon-2021-exp-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <flow name="hackathon-2021-exp-api-main">
+        <http:listener config-ref="hackathon-2021-exp-api-httpListenerConfig" path="/api/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:router config-ref="hackathon-2021-exp-api-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:BAD_REQUEST">
+                <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Bad request"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">400</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED">
+                <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Method not allowed"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">405</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
+                <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not acceptable"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">406</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+                <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Unsupported media type"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">415</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
+                <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not Implemented"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">501</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="hackathon-2021-exp-api-console">
+        <http:listener config-ref="hackathon-2021-exp-api-httpListenerConfig" path="/console/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:console config-ref="hackathon-2021-exp-api-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="hackathon-2021-exp-apiFlow" doc:id="9c7f947c-9dfc-4ae0-b2fe-d93ff2b62512">
+        <http:listener doc:name="Listener" doc:id="afb3246d-5b11-4c7c-a5b6-8b8e395a0fe1" config-ref="hackathon-2021-exp-api-httpListenerConfig" path="/home" />
+        <parse-template doc:name="Parse Template" doc:id="b9b37448-a41e-474d-8d3a-1214853b22fe" location="${mule.home}/apps/${app.name}/htmlPages/home.html" />
+    </flow>
+    <flow name="get:\dashboard\report\export:hackathon-2021-exp-api-config">
+        <flow-ref doc:name="download-report-Flow" doc:id="f8e41329-4170-41c1-b863-629319919b6a" name="download-report-Flow" />
+    </flow>
+    <flow name="get:\dashboard\export:hackathon-2021-exp-api-config">
+        <flow-ref doc:name="dashboard-export-as-pdf-subFlow" doc:id="2e5e88f0-8027-4ce5-a632-34a2e964cf7a" name="dashboard-export-as-pdf-subFlow" />
+    </flow>
+    <flow name="get:\dashboard:hackathon-2021-exp-api-config">
+        <flow-ref doc:name="dashboard-Flow" doc:id="267927a8-68a5-4e75-99d5-59dae1abe845" name="dashboard-Flow" />
+    </flow>
+    <flow name="get:\dashboard\notify\email:hackathon-2021-exp-api-config">
+        <flow-ref doc:name="send-email-flow" doc:id="4f4e68b5-0bb7-465d-b202-98a9d88719c1" name="send-email-flow" />
+        <parse-template doc:name="Parse Template" doc:id="bd5d0be5-4bd4-4020-b449-96edadae4129" location="${mule.home}/apps/${app.name}/htmlPages/afterSendingEmail.html" />
+    </flow>
+    <flow name="get:\dashboard\issues\sfdc:hackathon-2021-exp-api-config">
+        <flow-ref doc:name="Flow Reference" doc:id="5c6e4ad3-a95b-492f-bb49-06ec9aa23b7f" name="get-sfdc-cases-processSub_Flow" />
+        <parse-template doc:name="Parse Template" doc:id="92508f67-ce5e-4f1d-a15c-ef735dd53cb5" location="${mule.home}/apps/${app.name}/htmlPages/allsfdcCases.html" />
+    </flow>
+    <flow name="get:\dashboard\issues\serviceNow:hackathon-2021-exp-api-config">
+        <parse-template doc:name="Parse Template" doc:id="8adeaec7-1959-46cb-be66-5c90ee2947a9" location="${mule.home}/apps/${app.name}/htmlPages/work-in-progress.html" />
+    </flow>
+    <flow name="get:\dashboard\notify\whatsapp:hackathon-2021-exp-api-config">
+        <flow-ref doc:name="sent-whatsapp-message-flow" doc:id="3e985acc-36a8-4080-887f-6ec491f8b07e" name="sent-whatsapp-message-flow" />
+        <parse-template doc:name="Parse Template" doc:id="c49eaaa0-fb4b-40b9-9547-5acd7776e06e" location="${mule.home}/apps/${app.name}/htmlPages/afterSendingEmail.html" />
+    </flow>
+    <flow name="post:\dashboard\issues\sfdc:application\x-www-form-urlencoded:hackathon-2021-exp-api-config">
+        <flow-ref doc:name="create-cases-flow" doc:id="df97fa27-c9c7-4e95-ab6a-526622599648" name="create-cases-flow" />
+    </flow>
+    <flow name="post:\dashboard\issues\serviceNow:application\x-www-form-urlencoded:hackathon-2021-exp-api-config">
+        <parse-template doc:name="Parse Template" doc:id="47eae559-58d5-49cf-a6b9-c03954b513a8" location="${mule.home}/apps/${app.name}/htmlPages/work-in-progress.html" />
+    </flow>
+    <flow name="post:\dashboard\import:multipart\form-data:hackathon-2021-exp-api-config">
+        <ee:transform doc:name="Transform Message" doc:id="9b648cb8-339b-4d4d-853e-10cb2b5bce9e">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/csv
+---
+read(payload.parts.filename.content,"application/csv")]]></ee:set-payload>
+            </ee:message>
+            <ee:variables>
+                <ee:set-variable variableName="duration"><![CDATA[%dw 2.0
+output application/java
+---
+"3h"]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <flow-ref doc:name="dashboard-import-file-subFlow" doc:id="515f3e1d-07c4-4331-9d82-5f55a85d74fd" name="dashboard-import-file-subFlow" />
+    </flow>
+    <flow name="get:\dashboard\report\import:hackathon-2021-exp-api-config">
+        <flow-ref doc:name="platform-apisFlow-30m" doc:id="649bef32-f524-4df1-a7a8-dd72173c6fd1" name="platform-apisFlow-30m" />
+        <parse-template doc:name="Parse Template" doc:id="cc52db9f-28b8-4b33-b1fa-7ad762e1a18e" location="${mule.home}/apps/${app.name}/htmlPages/afterReportRefresh.html" />
+    </flow>
+    <flow name="get:\alexa\snapshot:hackathon-2021-exp-api-config">
+        <flow-ref doc:name="alexa-get-snapshot-Sub_Flow" doc:id="ae4f5487-2f4f-4d73-9146-21b1fcd70e87" name="alexa-get-snapshot-Sub_Flow" />
+    </flow>
+    <flow name="get:\alexa\notify\whatsapp:hackathon-2021-exp-api-config">
+        <flow-ref doc:name="alexa-exp-layer-notify-whatsapp" doc:id="24514777-2567-4a4a-b824-0837164b006d" name="alexa-exp-layer-notify-whatsapp" />
+    </flow>
+    <flow name="get:\dashboard\import:hackathon-2021-exp-api-config">
+        <logger level="INFO" message="get:\dashboard\import:hackathon-2021-exp-api-config" />
+    </flow>
+    <flow name="get:\dashboard\issues\serviceTrace:hackathon-2021-exp-api-config">
+        <logger level="INFO" message="get:\dashboard\issues\serviceTrace:hackathon-2021-exp-api-config" />
+    </flow>
+    <flow name="post:\dashboard\issues\serviceTrace:application\x-www-form-urlencoded:hackathon-2021-exp-api-config">
+        <logger level="INFO" message="post:\dashboard\issues\serviceTrace:application\x-www-form-urlencoded:hackathon-2021-exp-api-config" />
+    </flow>
+</mule>

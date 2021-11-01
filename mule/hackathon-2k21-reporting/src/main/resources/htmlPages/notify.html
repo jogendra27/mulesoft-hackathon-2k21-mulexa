@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+
+
+img.sticky {
+  top: 0;
+  width:10%;
+}
+
+img {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+table, th, td {
+  text-align: center;
+  border: 1px solid black;
+  vertical-align: middle;
+  }
+
+table.center {
+  margin-left: auto; 
+  margin-right: auto;
+}
+
+body {
+  background-repeat: no-repeat;
+  background-attachment: fixed;  
+  background-size: cover;
+  opacity: 200%;
+}
+
+/* The sticky class is added to the header with JS when it reaches its scroll position */
+.sticky {
+  position: fixed;
+  top: 0;
+  width: 100%
+}
+
+/* Add some top padding to the page content to prevent sudden quick movement (as the header gets a new position at the top of the page (position:fixed and top:0) */
+.sticky + .content {
+  padding-top: 102px;
+}
+
+*{box-sizing: border-box;}
+
+
+/* The popup form - hidden by default */
+.form-popup {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  right: 15px;
+  border: 3px solid #f1f1f1;
+  z-index: 9;
+}
+
+/* Add styles to the form container */
+.form-container {
+  max-width: 300px;
+  padding: 10px;
+  background-color: white;
+}
+
+/* Full-width input fields */
+.form-container input[type=text], .form-container input[type=password], .form-container select{
+  width: 100%;
+  padding: 15px;
+  margin: 5px 0 22px 0;
+  border: none;
+  background: #f1f1f1;
+}
+
+
+
+/* Set a style for the submit/login button */
+.form-container .btn {
+  background-color: #04AA6D;
+  color: white;
+  padding: 16px 20px;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  margin-bottom:10px;
+  opacity: 0.8;
+}
+
+/* Add a red background color to the cancel button */
+.form-container .cancel {
+  background-color: red;
+}
+
+/* Add some hover effects to buttons */
+.form-container .btn:hover, .open-button:hover {
+  opacity: 0.5;
+}
+
+</style>
+</head>
+<body>
+<a href=#["http://" ++ p('host') ++ "/api/dashboard"]>
+<img class="sticky" src='https://blogs.mulesoft.com/wp-content/uploads/Mulesoft-Hackathon-2021.png'/>
+</a>
+<font size="7" face="Comic Sans MS" color="#00a1e1">
+<h4 id="myHeader" style="text-align:center">Analysis of traffic in the application network</h4>
+</font>
+
+<font size="5" face="Comic Sans MS" align="center" color="#00a1e1">
+	<p>You're seeing data for last #[vars.duration default "3h"]</p>
+<br/>
+
+<h3>Here's a quick snapshot</h3>
+
+<table class="center" style="width:80%">
+  <tr>
+    <th>Parameter</th>
+    <th>Values</th>
+  </tr>
+  <tr>
+    <td>Total number of requests</td>
+    <td>#[payload.totalRequets]</td>
+  </tr>
+  <tr>
+    <td>Success %</td>
+    <td>#[payload.successPercentage]</td>
+  </tr>
+  <tr>
+    <td>Total failed calls</td>
+    <td>#[payload.totalFailedCalls]</td>
+  </tr>
+  <tr>
+    <td>Average resoponse time</td>
+    <td>#[payload.averageResponseTime]</td>
+  </tr>
+  <tr>
+    <td>Status codes returned by the API</td>
+    <td>#[payload.statusCodes]</td>
+  </tr>
+  <tr>
+    <td>Consumers</td>
+    <td>#[payload.topConsumers]</td>
+  </tr>
+</table>
+
+<br/>
+
+</font>
+
+
+<br/><br/><br/>
+
+	<font size="5" face="Comic Sans MS" align="center" color="#00a1e1">
+	<table style="width:50%" class="center">
+		<tr>
+			<th>Success and Failures</th>
+			<th>Failure HTTP Status</th>
+		</tr>
+		<tr>
+			<td align="center">
+				<img src=#[vars.chartURLs.successFailureURL] width="500" height="300" align="center"/>
+			</td>
+			<td align="center">
+				<img src=#[vars.chartURLs.failuresURL] width="500" height="300" align="center"/>
+			</td>
+		</tr>
+	</table>
+	
+	
+<br/><br/><br/><br/>
+
+	<table style="width:50%" class="center">
+		<tr>
+			<th>Endpoints and their average response times</th>
+			<th>Endpoints and number of requests received</th>
+		</tr>
+		<tr>
+			<td align="center">
+				<img src=#[vars.chartURLs.requestsAndResponseTimeURL] width="500" height="300" align="center"/>
+			</td>
+			<td align="center">
+				<img src=#[vars.chartURLs.requestsURL] width="500" height="300" align="center"/>
+			</td>
+		</tr>
+	</table>
+<br/><br/>
+	</font>
+<br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/>
+
+<font size="5" face="Comic Sans MS" color="#00a1e1">
+
+<p align="center">Recent tickets:</p>
+
+</font>
+
+<font size="3" face="Comic Sans MS" color="#00a1e1">
+  
+  #[vars.sfdcCases]
+  
+</font>
+
+
+
+
+</body>
+</html>

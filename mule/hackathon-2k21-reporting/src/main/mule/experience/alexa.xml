@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<sub-flow name="alexa-get-snapshot-Sub_Flow" doc:id="49a21b51-f755-484f-bc0b-10163a0f5784" >
+		<ee:transform doc:name="Transform Message" doc:id="c3b8ae0c-1bc3-41b3-aa2e-7adef4472f1c" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="duration" ><![CDATA[%dw 2.0
+output application/java
+---
+attributes.queryParams.duration]]></ee:set-variable>
+				<ee:set-variable variableName="caseCount" ><![CDATA[%dw 2.0
+output application/java
+---
+attributes.queryParams.count]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="collect-data-from-sources" doc:id="2df82bba-26f6-4f59-96f3-f0ccafe7951d" name="collect-data-from-sources"/>
+		<ee:transform doc:name="Transform Message" doc:id="c86388cc-fa3a-4420-bca3-93f654c328c0" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+var totalRequests=sizeOf(payload)
+var sfdcCases=vars.sfdcCases
+---
+{
+    totalRequets: totalRequests,
+    successPercentage: ((sizeOf(payload filter ($."Status Code" startsWith "2")))/totalRequests) as String {format: "0.00%"},
+    totalFailedCalls: sizeOf(payload filter !($."Status Code" startsWith "2")),
+    averageResponseTime: avg(payload."Response Time") as String {format: "0.000"} ++ "ms",
+    statusCodes: payload."Status Code" distinctBy $ orderBy $ joinBy ",",
+    topConsumers: keysOf(payload groupBy ($."Application Name") orderBy -sizeOf($)) filter !(isEmpty($)) joinBy ",",
+    newCases: sizeOf(sfdcCases.records filter $.status == "New"),
+	closedCases: sizeOf(sfdcCases.records filter $.status == "Closed"),
+	wipCases: sizeOf(sfdcCases.records filter $.status == "Working")
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+	<sub-flow name="alexa-exp-layer-notify-whatsapp" doc:id="524ff877-2131-4b41-b5f9-087f44ba765b" >
+		<flow-ref doc:name="Flow Reference" doc:id="8afe1716-f11d-4b2f-818c-4f3533c23d44" name="sent-whatsapp-message-flow"/>
+		<ee:transform doc:name="Transform Message" doc:id="1b0f9bb6-5478-4c10-aba4-57539da1e563" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Whatsapp messeage sent successfully"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+</mule>
